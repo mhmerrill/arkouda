@@ -11,6 +11,7 @@ module ConcatenateMsg
     
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
+    use SegmentedArray;
     use ServerErrorStrings;
     use CommAggregation;
     use PrivateDist;
@@ -57,10 +58,11 @@ module ConcatenateMsg
                 when "str" {
                     var valName: string;
                     (name, valName) = rawName.splitMsgToTuple('+', 2);
-                    try { 
-                        var gval = st.lookup(valName);
-                        nbytes += gval.size;
-                        valSize = gval.size;
+                    try {
+                        // get the values/bytes portion of strings
+                        var segString = getSegString(name, st);
+                        nbytes += segString.nBytes;
+                        valSize = segString.nBytes;
                     } catch e: Error {
                         throw getErrorWithContext(
                            msg="lookup for %s failed".format(name),
@@ -120,7 +122,8 @@ module ConcatenateMsg
                    * way the low and high of the empty domain are computed. 
                    */
                   if (objtype == "str") && (mynumsegs > 0) {
-                    const e = toSymEntry(g, int);
+                    const stringEntry = toSegStringSymEntry(g);
+                    const e = stringEntry.offsetsEntry;
                     const firstSeg = e.a[e.aD.localSubdomain().low];
                     var mybytes: int;
                     /* If this locale contains the last segment, we cannot use the
@@ -150,19 +153,28 @@ module ConcatenateMsg
         // and copy in arrays
         select objtype {
             when "str" {
-                var segName = st.nextName();
-                var esegs = st.addEntry(segName, size, int);
+                // var segName = st.nextName();
+                // var esegs = st.addEntry(segName, size, int);
+                // var valName = st.nextName();
+                // var evals = st.addEntry(valName, nbytes, uint(8));
+                // Allocate the two components of a Segmented
+                var esegs = createTypedSymEntry(size, int);
+                var evals = createTypedSymEntry(nbytes, uint(8));
                 ref esa = esegs.a;
-                var valName = st.nextName();
-                var evals = st.addEntry(valName, nbytes, uint(8));
                 ref eva = evals.a;
                 var segStart = 0;
                 var valStart = 0;
+
+                // Let's allocate a new SegString for the return object
+                var retString = assembleSegStringFromParts(esegs, evals, st);
                 for (rawName, i) in zip(names, 1..) {
-                    var (segName, valName) = rawName.splitMsgToTuple('+', 2);
-                    var thisSegs = toSymEntry(st.lookup(segName), int);
+                    var (strName, legacy_placerholder) = rawName.splitMsgToTuple('+', 2);
+                    var segString = getSegString(strName, st);
+                    // var thisSegs = toSymEntry(st.lookup(segName), int);
+                    var thisSegs = segString.offsets;
                     var newSegs = thisSegs.a + valStart;
-                    var thisVals = toSymEntry(st.lookup(valName), uint(8));
+                    // var thisVals = toSymEntry(st.lookup(valName), uint(8));
+                    var thisVals = segString.values;
                     if mode == "interleave" {
                       coforall loc in Locales {
                         on loc {
@@ -202,9 +214,10 @@ module ConcatenateMsg
                       valStart += thisVals.size;
                     }
                 }
-                var repMsg = "created " + st.attrib(segName) + "+created " + st.attrib(valName);
+                var repMsg = "created " + st.attrib(retString.name) + "+created bytes.size %t".format(retString.nBytes);
+                // var repMsg = "created " + st.attrib(retString.name) + "+created " + st.attrib(retString.name);
                 cmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
-                                  "created concatenated pdarray %s".format(st.attrib(valName)));
+                                  "created concatenated pdarray %s".format(st.attrib(retString.name)));
                 return new MsgTuple(repMsg, MsgType.NORMAL);
             }
             when "pdarray" {

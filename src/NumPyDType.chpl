@@ -3,7 +3,7 @@ module NumPyDType
 {
     /* In chapel the types int and real defalut to int(64) and real(64).
        We also need other types like float32, int32, etc */
-    enum DType {Int64, Float64, Bool, UInt8, UNDEF}; 
+    enum DType {Int64, Float64, Bool, UInt8, UNDEF, Strings}; 
 
     /* 
     Take a chapel type and returns the matching DType 
@@ -17,6 +17,7 @@ module NumPyDType
       if (etype == real) {return DType.Float64;}
       if (etype == bool) {return DType.Bool;}
       if (etype == uint(8)) {return DType.UInt8;}
+      if (etype == string) {return DType.Strings;}
       return DType.UNDEF; // undefined type
     }
 
@@ -47,6 +48,7 @@ module NumPyDType
         if dstr == "float64" {return DType.Float64;}        
         if dstr == "bool" {return DType.Bool;}
         if dstr == "uint8" {return DType.UInt8;}
+        if dstr == "str" {return DType.Strings;}
         return DType.UNDEF;
     }
     
@@ -62,6 +64,7 @@ module NumPyDType
         if dtype == DType.Float64 {return "float64";}        
         if dtype == DType.Bool {return "bool";}
         if dtype == DType.UInt8 {return "uint8";}
+        if dtype == DType.Strings {return "str";}
         return "UNDEF";
     }
 

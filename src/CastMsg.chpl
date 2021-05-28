@@ -93,8 +93,7 @@ module CastMsg {
         }
       }
       when "str" {
-          const (segName, valName) = name.splitMsgToTuple("+", 2);
-          const strings = getSegString(segName, valName, st);
+          const strings = getSegString(name, st);
           select targetDtype {
               when "int64" {
                   return new MsgTuple(castStringToSymEntry(strings, st, int), MsgType.NORMAL);
@@ -120,7 +119,7 @@ module CastMsg {
         castLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);                      
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
-      }
+    }
   }
 
   proc castGenSymEntry(gse: borrowed GenSymEntry, st: borrowed SymTab, type fromType, 

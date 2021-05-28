@@ -305,6 +305,8 @@ proc main() {
                 when "setdiff1d"         {repTuple = setdiff1dMsg(cmd, args, st);}
                 when "setxor1d"          {repTuple = setxor1dMsg(cmd, args, st);}
                 when "union1d"           {repTuple = union1dMsg(cmd, args, st);}
+                when "segStr-assemble"   {repTuple = assembleStringsMsg(cmd, args, st);}
+                when "segStr-tondarray"  {binaryRepMsg = segStrTondarrayMsg(cmd, args, st);}
                 when "segmentLengths"    {repTuple = segmentLengthsMsg(cmd, args, st);}
                 when "segmentedHash"     {repTuple = segmentedHashMsg(cmd, args, st);}
                 when "segmentedEfunc"    {repTuple = segmentedEfuncMsg(cmd, args, st);}
