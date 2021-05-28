@@ -24,7 +24,7 @@ def time_ak_coargsort(N_per_locale, trials, dtype, seed):
             nbytes = sum(a.size * a.itemsize for a in arrs)
         elif dtype == 'str':
             arrs = [ak.random_strings_uniform(1, 16, N//numArrays, seed=s) for s in seeds]
-            nbytes = sum(a.bytes.size * a.bytes.itemsize for a in arrs)
+            nbytes = sum(a.nbytes * a.entry.itemsize for a in arrs)
 
         timings = []
         for i in range(trials):
