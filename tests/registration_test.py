@@ -290,23 +290,16 @@ class RegistrationTest(ArkoudaTest):
         # Initial registration should set name
         keep = ak.random_strings_uniform(1, 10, UNIQUE, characters='printable')
         self.assertTrue(keep.register("keep_me").name == "keep_me")
-        self.assertTrue(keep.offsets.name == "keep_me.offsets")
-        self.assertTrue(keep.bytes.name == "keep_me.bytes")
-
         self.assertTrue(keep.is_registered(), "Expected Strings object to be registered")
 
         # Register a second time to confirm name change
         self.assertTrue(keep.register("kept").name == "kept")
-        self.assertTrue(keep.offsets.name == "kept.offsets")
-        self.assertTrue(keep.bytes.name == "kept.bytes")
         self.assertTrue(keep.is_registered(), "Object should be registered with updated name")
 
         # Add an item to discard, confirm our registered item remains and discarded item is gone
         discard = ak.random_strings_uniform(1, 10, UNIQUE, characters='printable')
         ak.clear()
         self.assertTrue(keep.name == "kept")
-        self.assertTrue(keep.offsets.name == "kept.offsets")
-        self.assertTrue(keep.bytes.name == "kept.bytes")
         with self.assertRaises(RuntimeError, msg="discard was not registered and should be discarded"):
             str(discard)
 
@@ -344,12 +337,6 @@ class RegistrationTest(ArkoudaTest):
 
         keep.unregister()
         self.assertFalse(keep.is_registered())
-
-        # Now mess with one of the internal pieces to test is_registered() logic
-        self.assertTrue(keep.register("uut").is_registered(), "Re-register keep as uut")
-        ak.unregister_pdarray_by_name("uut.bytes")
-        with self.assertRaises(RegistrationError, msg="Expected RegistrationError on mis-matched pieces"):
-            keep.is_registered()
 
         ak.clear()
 
