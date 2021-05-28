@@ -57,7 +57,7 @@ def cast(pda : Union[pdarray, Strings], dt: Union[np.dtype,str]) -> Union[pdarra
         name = pda.name
         objtype = "pdarray"
     elif isinstance(pda, Strings):
-        name = '+'.join((pda.offsets.name, pda.bytes.name))
+        name = pda.entry.name
         objtype = "str"    
     # typechecked decorator guarantees no other case
 
@@ -67,7 +67,7 @@ def cast(pda : Union[pdarray, Strings], dt: Union[np.dtype,str]) -> Union[pdarra
     args= "{} {} {} {}".format(name, objtype, dt.name, opt)
     repMsg = generic_msg(cmd=cmd,args=args)
     if dt.name.startswith("str"):
-        return Strings(*(type_cast(str,repMsg).split("+")))
+        return Strings.from_parts(*(type_cast(str,repMsg).split("+")))
     else:
         return create_pdarray(type_cast(str,repMsg))
 

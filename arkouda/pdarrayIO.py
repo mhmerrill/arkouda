@@ -202,18 +202,18 @@ def read_all(filenames : Union[str, List[str]],
             d: Dict[str, Union[pdarray, Strings]] = {}
             for item in items:
                 if "seg_string" == item["arkouda_type"]:
-                    d[item["dataset_name"]] = Strings(*item["created"].split("+"))
+                    d[item["dataset_name"]] = Strings.from_parts(*item["created"].split("+"))
                 elif "pdarray" == item["arkouda_type"]:
                     d[item["dataset_name"]] = create_pdarray(item["created"])
                 else:
                     raise TypeError(f"Unknown arkouda type:{item['arkouda_type']}")
             return d
-
         elif len(items) == 1:
             item = items[0]
             if "pdarray" == item["arkouda_type"]:
                 return create_pdarray(item["created"])
             elif "seg_string" == item["arkouda_type"]:
+                # TODO: This needs to use the proper Strings factory method, pre-rebase was the Strings.from_return_msg which no longer works here due to json
                 return Strings(*item["created"].split("+"))
             else:
                 raise TypeError(f"Unknown arkouda type:{item['arkouda_type']}")

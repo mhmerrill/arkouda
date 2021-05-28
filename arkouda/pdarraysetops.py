@@ -74,15 +74,15 @@ def unique(pda : Union[pdarray,Strings,'Categorical'], # type: ignore
         else:
             return create_pdarray(cast(str,repMsg))
     elif isinstance(pda, Strings):
-        name = '{}+{}'.format(pda.offsets.name, pda.bytes.name)
+        name = '{}+{}'.format(pda.entry.name, "legacy_placeholder")
         repMsg = cast(str,generic_msg(cmd="unique", args="{} {} {}".\
                              format(pda.objtype, name, return_counts)))
         vc = repMsg.split('+')
         logger.debug(vc)
         if return_counts:
-            return Strings(vc[0], vc[1]), create_pdarray(cast(str,vc[2]))
+            return Strings.from_return_msg("+".join(vc[0:2])), create_pdarray(cast(str,vc[2]))
         else:
-            return Strings(vc[0], vc[1])
+            return Strings.from_return_msg(repMsg)
     else:
         raise TypeError("must be pdarray, Strings, or Categorical {}")
 
@@ -158,11 +158,11 @@ def in1d(pda1 : Union[pdarray,Strings,'Categorical'], pda2 : Union[pdarray,Strin
     elif isinstance(pda1, Strings) and isinstance(pda2, Strings):
         repMsg = generic_msg(cmd="segmentedIn1d", args="{} {} {} {} {} {} {}".\
                                     format(pda1.objtype,
-                                    pda1.offsets.name,
-                                    pda1.bytes.name,
+                                    pda1.entry.name,
+                                    "legacy_placeholder",
                                     pda2.objtype,
-                                    pda2.offsets.name,
-                                    pda2.bytes.name,
+                                    pda2.entry.name,
+                                    "legacy_placeholder",
                                     invert))
         return create_pdarray(cast(str,repMsg))
     else:
@@ -247,8 +247,7 @@ def concatenate(arrays : Sequence[Union[pdarray,Strings,'Categorical']], #type: 
                 raise ValueError("All pdarrays must have same dtype")
             names.append(cast(pdarray,a).name)
         elif objtype == "str":
-            names.append('{}+{}'.format(cast(Strings,a).offsets.name, 
-                                                   cast(Strings,a).bytes.name))
+            names.append('{}+{}'.format(cast(Strings, a).entry.name, "legacy_placeholder"))
         else:
             raise NotImplementedError(("concatenate not implemented " +
                                     "for object type {}".format(objtype)))
@@ -264,7 +263,8 @@ def concatenate(arrays : Sequence[Union[pdarray,Strings,'Categorical']], #type: 
     if objtype == "pdarray":
         return create_pdarray(cast(str,repMsg))
     elif objtype == "str":
-        return Strings(*(cast(str,repMsg).split('+')))
+        # ConcatenateMsg returns created attrib(name)+created nbytes=123
+        return Strings.from_return_msg(cast(str, repMsg))
     else:
         raise TypeError('arrays must be an array of pdarray or Strings objects')
 
