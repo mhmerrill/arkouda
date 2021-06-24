@@ -29,9 +29,13 @@ def time_ak_scatter(isize, vsize, trials, dtype, random, seed):
     
     timings = []
     for _ in range(trials):
+        print("i={},c[i]={}".format(i, c[i]))
+        print("v={}".format(v))
         start = time.time()
         c[i] = v
         end = time.time()
+        print("i={},c[i]={}".format(i, c[i]))
+        print("v={}".format(v))
         timings.append(end - start)
     tavg = sum(timings) / trials
 

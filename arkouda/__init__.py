@@ -4,6 +4,7 @@ del get_versions
 
 from arkouda.client import *
 from arkouda.dtypes import *
+from arkouda.dtypes import npstr as akstr
 from arkouda.pdarrayclass import *
 from arkouda.sorting import *
 from arkouda.pdarraysetops import * 
