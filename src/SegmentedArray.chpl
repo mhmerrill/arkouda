@@ -154,12 +154,13 @@ module SegmentedArray {
 
 
     /* Take a slice of strings from the array. The slice must be a 
-     *  Chapel range, i.e. low..high by stride, not a Python slice.
-     *  Returns arrays for the segment offsets and bytes of the slice.
-     */
+        Chapel range, i.e. low..high by stride, not a Python slice.
+        Returns arrays for the segment offsets and bytes of the slice.*/
 
     proc this(const slice: range(stridable=true)) throws {
       if (slice.low < offsets.aD.low) || (slice.high > offsets.aD.high) {
+        saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                              "Array out of bounds");
         throw new owned OutOfBoundsError();
       }
       // Early return for zero-length result
@@ -196,8 +197,7 @@ module SegmentedArray {
     }
 
     /* Gather strings by index. Returns arrays for the segment offsets
-     *  and bytes of the gathered strings.
-     */
+        and bytes of the gathered strings.*/
     proc this(iv: [?D] int) throws {
       // Early return for zero-length result
       if (D.size == 0) {
@@ -207,6 +207,8 @@ module SegmentedArray {
       var ivMin = min reduce iv;
       var ivMax = max reduce iv;
       if (ivMin < 0) || (ivMax >= offsets.size) {
+        saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                              "Array out of bounds");
         throw new owned OutOfBoundsError();
       }
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -237,7 +239,7 @@ module SegmentedArray {
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), 
                                                   "%i seconds".format(getCurrentTime() - t1));
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "Copying values");
-      if v {
+      if logLevel == LogLevel.DEBUG {
           t1 = getCurrentTime();
       }
       var gatheredVals = makeDistArray(retBytes, uint(8));
@@ -246,11 +248,10 @@ module SegmentedArray {
       if CHPL_COMM != 'none' {
         // Compute the src index for each byte in gatheredVals
         /* For performance, we will do this with a scan, so first we need an array
-         *  with the difference in index between the current and previous byte. For
-         *  the interior of a segment, this is just one, but at the segment boundary,
-         *  it is the difference between the src offset of the current segment ("left")
-         *  and the src index of the last byte in the previous segment (right - 1).
-         */
+            with the difference in index between the current and previous byte. For
+            the interior of a segment, this is just one, but at the segment boundary,
+            it is the difference between the src offset of the current segment ("left")
+            and the src index of the last byte in the previous segment (right - 1).*/
         var srcIdx = makeDistArray(retBytes, int);
         srcIdx = 1;
         var diffs: [D] int;
@@ -288,6 +289,8 @@ module SegmentedArray {
     proc this(iv: [?D] bool) throws {
       // Index vector must be same domain as array
       if (D != offsets.aD) {
+        saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                              "Array out of bounds");
         throw new owned OutOfBoundsError();
       }
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), 
@@ -327,7 +330,7 @@ module SegmentedArray {
       /* var gatheredOffsets = (+ scan gatheredLengths); */
       /* var retBytes = gatheredOffsets[newSize-1]; */
       /* gatheredOffsets -= gatheredLengths; */
-      /* if v { */
+      /* if logLevel == LogLevel.DEBUG { */
       /*     saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                   "%i seconds".format(getCurrentTime() - t1)); */
       /*     saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Copying values"));*/
@@ -335,7 +338,7 @@ module SegmentedArray {
       /* } */
       /* var gatheredVals = makeDistArray(retBytes, uint(8)); */
       /* ref va = values.a; */
-      /* if v { */
+      /* if logLevel == LogLevel.DEBUG { */
       /*   printAry("gatheredOffsets: ", gatheredOffsets); */
       /*   printAry("gatheredLengths: ", gatheredLengths); */
       /*   printAry("segInds: ", segInds); */
@@ -347,7 +350,6 @@ module SegmentedArray {
       /* saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                      "%i seconds".format(getCurrentTime() - t1));*/
       /* return (gatheredOffsets, gatheredVals); */
-
     }
 
     /* Apply a hash function to all strings. This is useful for grouping
@@ -385,10 +387,10 @@ module SegmentedArray {
       if useHash {
         // Hash all strings
         saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "Hashing strings"); 
-        if v { t.start(); }
+        if logLevel == LogLevel.DEBUG { t.start(); }
         var hashes = this.hash();
 
-        if v { 
+        if logLevel == LogLevel.DEBUG {
             t.stop();    
             saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                            "hashing took %t seconds\nSorting hashes".format(t.elapsed())); 
@@ -397,12 +399,12 @@ module SegmentedArray {
 
         // Return the permutation that sorts the hashes
         var iv = radixSortLSD_ranks(hashes);
-        if v { 
+        if logLevel == LogLevel.DEBUG {
             t.stop(); 
             saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                             "sorting took %t seconds".format(t.elapsed())); 
         }
-        if v{
+        if logLevel == LogLevel.DEBUG {
           var sortedHashes = [i in iv] hashes[i];
           var diffs = sortedHashes[(iv.domain.low+1)..#(iv.size-1)] - 
                                                  sortedHashes[(iv.domain.low)..#(iv.size-1)];
@@ -442,7 +444,7 @@ module SegmentedArray {
     proc findSubstringInBytes(const substr: string) {
       // Find the start position of every occurence of substr in the flat bytes array
       // Start by making a right-truncated subdomain representing all valid starting positions for substr of given length
-      var D: subdomain(values.aD) = values.aD[values.aD.low..#(values.size - substr.numBytes)];
+      var D: subdomain(values.aD) = values.aD[values.aD.low..#(values.size - substr.numBytes + 1)];
       // Every start position is valid until proven otherwise
       var truth: [D] bool = true;
       // Shift the flat values one byte at a time and check against corresponding byte of substr
@@ -459,14 +461,14 @@ module SegmentedArray {
       }
       var t = new Timer();
 
-      if v {
+      if logLevel == LogLevel.DEBUG {
            saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                 "Checking bytes of substr"); 
            t.start();
       }
       const truth = findSubstringInBytes(substr);
       const D = truth.domain;
-      if v {
+      if logLevel == LogLevel.DEBUG {
             t.stop(); 
             saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                   "took %t seconds\nTranslating to segments...".format(t.elapsed())); 
@@ -477,7 +479,7 @@ module SegmentedArray {
       const tail = + reduce (offsets.a > D.high);
       // oD is the right-truncated domain representing segments that are candidates for containing substr
       var oD: subdomain(offsets.aD) = offsets.aD[offsets.aD.low..#(offsets.size - tail)];
-      if v {
+      if logLevel == LogLevel.DEBUG {
              t.stop(); 
              saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                    "took %t seconds\ndetermining answer...".format(t.elapsed())); 
@@ -499,9 +501,9 @@ module SegmentedArray {
         // Position where substr aligns with end of segment must be a hit
         // -1 for null byte
         hits[oD.interior(-(oD.size-1))] = truth[oa[oD.interior(oD.size-1)] - substr.numBytes - 1];
-        hits[oD.high] = truth[D.high];
+        hits[oD.high] = truth[D.high-1];
       }
-      if v {
+      if logLevel == LogLevel.DEBUG {
           t.stop(); 
           saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                    "took %t seconds".format(t.elapsed()));
@@ -526,7 +528,7 @@ module SegmentedArray {
         if oa[i] > D.high {
           // When the last string(s) is/are shorter than the substr
           hasEnough = false;
-        } else if i == high {
+        } else if ((i == high) || (oa[i+1] > D.high)) {
           hasEnough = ((+ reduce truth) - numHits[oa[i]]) >= times;
         } else {
           hasEnough = (numHits[oa[i+1]] - numHits[oa[i]]) >= times;
@@ -611,13 +613,13 @@ module SegmentedArray {
       ref va = values.a;
       // Fill left values
       forall (srcStart, dstStart, len) in zip(oa, leftOffsets, leftLengths) {
-        for i in 0..#len {
+        for i in 0..#(len-1) {
           unorderedCopy(leftVals[dstStart+i], va[srcStart+i]);
         }
       }
       // Fill right values
       forall (srcStart, dstStart, len) in zip(rightStart, rightOffsets, rightLengths) {
-        for i in 0..#len {
+        for i in 0..#(len-1) {
           unorderedCopy(rightVals[dstStart+i], va[srcStart+i]);
         }
       }
@@ -711,7 +713,7 @@ module SegmentedArray {
       return (&& reduce (ediff() >= 0));
     }
 
-    proc argsort(checkSorted:bool=true): [offsets.aD] int throws {
+    proc argsort(checkSorted:bool=false): [offsets.aD] int throws {
       const ref D = offsets.aD;
       const ref va = values.a;
       if checkSorted && isSorted() {
@@ -915,7 +917,7 @@ module SegmentedArray {
                               "Array out of bounds");
           throw new owned OutOfBoundsError();
       }
-      if v {writeln("Computing lengths and offsets"); stdout.flush();}
+      if logLevel == LogLevel.DEBUG {writeln("Computing lengths and offsets"); stdout.flush();}
       var t1 = getCurrentTime();
       ref oa = offsets.a;
       const low = offsets.aD.low, high = offsets.aD.high;
@@ -1057,7 +1059,7 @@ module SegmentedArray {
       /* forall (go, gl, idx) in zip(gatheredOffsets, gatheredLengths, segInds) { */
       /*   gatheredVals[{go..#gl}] = va[{oa[idx]..#gl}]; */
       /* } */
-      /* if v {writeln(getCurrentTime() - t1, " seconds"); stdout.flush();} */
+      /* if logLevel == LogLevel.DEBUG {writeln(getCurrentTime() - t1, " seconds"); stdout.flush();} */
       /* return (gatheredOffsets, gatheredVals); */
     }
 
@@ -1705,9 +1707,9 @@ module SegmentedArray {
     // Hash all suffix array for fast comparison
     var t = new Timer();
     saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Hashing strings");
-    if v { t.start(); }
+    if logLevel == LogLevel.DEBUG { t.start(); }
     const hashes = mainSar.hash();
-    if v {
+    if logLevel == LogLevel.DEBUG {
         t.stop(); 
         saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), 
                                                 "%t seconds".format(t.elapsed())); 
@@ -1732,7 +1734,7 @@ module SegmentedArray {
         /* [i in truth.localSubdomain()] truth[i] = mySet.contains(hashes[i]); */
       }
     }
-    if v {
+    if logLevel == LogLevel.DEBUG {
       t.stop(); 
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                              "%t seconds".format(t.elapsed())); 
@@ -1742,7 +1744,7 @@ module SegmentedArray {
       t.start();
     }
     [i in truth.domain] truth[i] = localTestHashes[here.id].contains(hashes[i]);
-    if v {
+    if logLevel == LogLevel.DEBUG {
         t.stop(); 
         saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                              "%t seconds".format(t.elapsed()));
@@ -1789,7 +1791,7 @@ module SegmentedArray {
       const order = ar.argsort();
       const (sortedSegs, sortedVals) = ar[order];
       const sar = new owned SegString(sortedSegs, sortedVals, st);
-      if logLevel == LogLevel.DEBUG { 
+      if logLevel == LogLevel.DEBUG {
           saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                                             "Sorted concatenated unique strings:"); 
           sar.show(10); 
@@ -1868,7 +1870,7 @@ module SegmentedArray {
       const order = ar.argsort();
       const (sortedSegs, sortedVals) = ar[order];
       const sar = new owned SegSArray(sortedSegs, sortedVals, st);
-      if v { 
+      if logLevel == LogLevel.DEBUG {
           saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                                             "Sorted concatenated unique strings:"); 
           sar.show(10); 
@@ -1909,7 +1911,7 @@ module SegmentedArray {
       forall (o, f) in zip(order, flag) with (var agg = newDstAggregator(bool)) {
         agg.copy(ret[o], f);
       }
-      if v {
+      if logLevel == LogLevel.DEBUG {
           saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                                 "Ret pop: %t".format(+ reduce ret));
       }

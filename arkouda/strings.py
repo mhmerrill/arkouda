@@ -144,7 +144,7 @@ class Strings:
             encapsulating the results of the requested binop      
 
         Raises
-    -   -----
+        -----
         ValueError
             Raised if (1) the op is not in the self.BinOps set, or (2) if the
             sizes of this and the other instance don't match, or (3) the other
@@ -1172,7 +1172,7 @@ class SArrays:
             encapsulating the results of the requested binop      
 
         Raises
-    -   -----
+        -----
         ValueError
             Raised if (1) the op is not in the self.BinOps set, or (2) if the
             sizes of this and the other instance don't match, or (3) the other
