@@ -184,3 +184,5 @@ class CategoricalTest(ArkoudaTest):
         c = ak.concatenate((a, b), ordered=False)
         ans = ak.Categorical(ak.array(['a', 'b']))
         self.assertTrue((c == ans).all())
+        
+        

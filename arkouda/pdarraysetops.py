@@ -5,7 +5,8 @@ from arkouda.client import generic_msg, get_config
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.pdarraycreation import zeros, zeros_like, array
 from arkouda.sorting import argsort
-from arkouda.strings import Strings,SArrays
+from arkouda.strings import Strings
+from arkouda.suffix_array import SArrays
 from arkouda.logger import getArkoudaLogger
 
 Categorical = ForwardRef('Categorical')
@@ -169,9 +170,8 @@ def in1d(pda1 : Union[pdarray,Strings,'Categorical'], pda2 : Union[pdarray,Strin
         raise TypeError('Both pda1 and pda2 must be pdarray, Strings, or Categorical')
 
 
-
-def in1d_int(pda1 : Union[pdarray,SArrays,'Categorical'], pda2 : Union[pdarray,SArrays,'Categorical'], #type: ignore
-                         invert : bool=False) -> pdarray: #type: ignore
+def in1d_int(pda1: Union[pdarray, SArrays, 'Categorical'], pda2: Union[pdarray, SArrays, 'Categorical'],  # type: ignore
+             invert: bool = False) -> pdarray:
     """
     Test whether each element of a 1-D array is also present in a second array.
 
@@ -183,7 +183,7 @@ def in1d_int(pda1 : Union[pdarray,SArrays,'Categorical'], pda2 : Union[pdarray,S
     pda1 : pdarray or SArrays or Categorical
         Input array.
     pda2 : pdarray or SArrays or Categorical
-        The values against which to test each value of `pda1`. Must be the 
+        The values against which to test each value of `pda1`. Must be the
         same type as `pda1`.
     invert : bool, optional
         If True, the values in the returned array are inverted (that is,
@@ -195,11 +195,11 @@ def in1d_int(pda1 : Union[pdarray,SArrays,'Categorical'], pda2 : Union[pdarray,S
     -------
     pdarray, bool
         The values `pda1[in1d]` are in `pda2`.
-        
+
     Raises
     ------
     TypeError
-        Raised if either pda1 or pda2 is not a pdarray, Strings, or 
+        Raised if either pda1 or pda2 is not a pdarray, Strings, or
         Categorical object or if invert is not a bool
     RuntimeError
         Raised if the dtype of either array is not supported
@@ -214,34 +214,36 @@ def in1d_int(pda1 : Union[pdarray,SArrays,'Categorical'], pda2 : Union[pdarray,S
     python keyword `in`, for 1-D sequences. ``in1d(a, b)`` is logically
     equivalent to ``ak.array([item in b for item in a])``, but is much
     faster and scales to arbitrarily large ``a``.
-    
+
     ak.in1d is not supported for bool or float64 pdarrays
 
     Examples
     --------
     >>> ak.in1d(ak.array([-1, 0, 1]), ak.array([-2, 0, 2]))
-    array([False, True, False])    
-    
+    array([False, True, False])
+
     >>> ak.in1d(ak.array(['one','two']),ak.array(['two', 'three','four','five']))
     array([False, True])
     """
     from arkouda.categorical import Categorical as Categorical_
     if hasattr(pda1, 'in1d'):
-        return cast(Categorical_,pda1).in1d(pda2)
+        return cast(Categorical_, pda1).in1d(pda2)
     elif isinstance(pda1, pdarray) and isinstance(pda2, pdarray):
-        repMsg = generic_msg("in1d {} {} {}".\
-                             format(pda1.name, pda2.name, invert))
-        return create_pdarray(cast(str,repMsg))
+        repMsg = generic_msg("in1d {} {} {}".format(pda1.name, pda2.name, invert))
+        return create_pdarray(cast(str, repMsg))
     elif isinstance(pda1, SArrays) and isinstance(pda2, SArrays):
-        repMsg = generic_msg("segmentedIn1dInt {} {} {} {} {} {} {}".\
-                                    format(pda1.objtype,
-                                    pda1.offsets.name,
-                                    pda1.bytes.name,
-                                    pda2.objtype,
-                                    pda2.offsets.name,
-                                    pda2.bytes.name,
-                                    invert))
-        return create_pdarray(cast(str,repMsg))
+        repMsg = generic_msg(
+            "segmentedIn1dInt {} {} {} {} {} {} {}".format(
+                pda1.objtype,
+                pda1.offsets.name,
+                pda1.bytes.name,
+                pda2.objtype,
+                pda2.offsets.name,
+                pda2.bytes.name,
+                invert,
+            )
+        )
+        return create_pdarray(cast(str, repMsg))
     else:
         raise TypeError('Both pda1 and pda2 must be pdarray, SArrays, or Categorical')
 
