@@ -103,6 +103,7 @@ module MultiTypeSymEntry
         :arg etype: type to be instantiated
         :type etype: type
         */
+
         proc init(len: int, type etype) {
             super.init(etype, len);
             this.etype = etype;

@@ -118,7 +118,7 @@ class CategoricalTest(ArkoudaTest):
         self.assertEqual(('type of argument "other" must be one of (Categorical, str, str_);' +
                           ' got int instead'), 
                          cm.exception.args[0])
-    
+
     def testIn1d(self):
         vals = [i % 3 for i in range(10)]
         valsTwo = [i % 2 for i in range(10)]
@@ -137,7 +137,7 @@ class CategoricalTest(ArkoudaTest):
             ak.in1d(catOne, ak.randint(0,5,5))
         self.assertEqual(('type of argument "test" must be one of (Strings, Categorical); got ' + 
                           'arkouda.pdarrayclass.pdarray instead'), cm.exception.args[0])    
-       
+    
     def testConcatenate(self):
         catOne = self._getCategorical('string',51)
         catTwo = self._getCategorical('string-two', 51)
@@ -161,7 +161,7 @@ class CategoricalTest(ArkoudaTest):
         # that both permutation and segments are None
         self.assertFalse(resultCat.permutation)
         self.assertFalse(resultCat.segments)
-        
+
         # Concatenate two Categoricals with different categories, and test result against original strings
         s1 = ak.array(['abc', 'de', 'abc', 'fghi', 'de'])
         s2 = ak.array(['jkl', 'mno', 'fghi', 'abc', 'fghi', 'mno'])

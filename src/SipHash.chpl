@@ -55,6 +55,27 @@ module SipHash {
             (p[7]: uint(64) << 56));
   }
 
+  private inline proc U8TO64_LE(p: [] int, D): uint(64) {
+    return ((p[D.low]: uint(64)) |
+            (p[D.low+1]: uint(64) << 8) |
+            (p[D.low+2]: uint(64) << 16) |
+            (p[D.low+3]: uint(64) << 24) |
+            (p[D.low+4]: uint(64) << 32) |
+            (p[D.low+5]: uint(64) << 40) |
+            (p[D.low+6]: uint(64) << 48) |
+            (p[D.low+7]: uint(64) << 56));
+  }
+
+  private inline proc U8TO64_LE(p: c_ptr(int)): uint(64) {
+    return ((p[0]: uint(64)) |
+            (p[1]: uint(64) << 8) |
+            (p[2]: uint(64) << 16) |
+            (p[3]: uint(64) << 24) |
+            (p[4]: uint(64) << 32) |
+            (p[5]: uint(64) << 40) |
+            (p[6]: uint(64) << 48) |
+            (p[7]: uint(64) << 56));
+  }
 
   private inline proc byte_reverse(b: uint(64)): uint(64) {
     var c: uint(64);
@@ -75,6 +96,9 @@ module SipHash {
   }
 
   proc sipHash128(msg: [] uint(8), D): 2*uint(64) {
+    return computeSipHashLocalized(msg, D, 16);
+  }
+  proc sipHash128(msg: [] int, D): 2*uint(64) {
     return computeSipHashLocalized(msg, D, 16);
   }
 
@@ -104,6 +128,31 @@ module SipHash {
     return computeSipHash(msg, D, outlen);
   }
   
+  private proc computeSipHashLocalized(msg: [] int, D, param outlen: int) {
+    if contiguousIndices(msg) {
+      ref start = msg[D.low];
+      if D.high < D.low {
+        return computeSipHash(c_ptrTo(start), 0..#0, outlen);
+      }
+      ref end = msg[D.high];
+      const startLocale = start.locale.id;
+      const endLocale = end.locale.id;
+      const hereLocale = here.id;
+      const l = D.size;
+      if startLocale == endLocale {
+        if startLocale == hereLocale {
+          return computeSipHash(c_ptrTo(start), 0..#l, outlen);
+        } else {
+          var a = c_malloc(msg.eltType, l);
+          GET(a, startLocale, getAddr(start), l);
+          var h = computeSipHash(a, 0..#l, outlen);
+          c_free(a);
+          return h;
+        }
+      }
+    }
+    return computeSipHash(msg, D, outlen);
+  }
   private proc computeSipHash(msg, D, param outlen: int) {
     if !((outlen == 8) || (outlen == 16)) {
       compilerError("outlen must be 8 or 16");

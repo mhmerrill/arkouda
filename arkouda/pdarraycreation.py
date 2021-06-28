@@ -9,13 +9,12 @@ from arkouda.dtypes import structDtypeCodes, NUMBER_FORMAT_STRINGS, float64, int
     int_scalars, numeric_scalars
 from arkouda.dtypes import dtype as akdtype
 from arkouda.pdarrayclass import pdarray, create_pdarray
-from arkouda.strings import Strings
+from arkouda.strings import Strings, SArrays
 
 __all__ = ["array", "zeros", "ones", "zeros_like", "ones_like", 
            "arange", "linspace", "randint", "uniform", "standard_normal",
            "random_strings_uniform", "random_strings_lognormal", 
-           "from_series"
-          ]
+           "from_series", "suffix_array","lcp_array","suffix_array_file"]
 
 @typechecked
 def from_series(series : pd.Series, 
@@ -607,7 +606,7 @@ def randint(low : numeric_scalars, high : numeric_scalars,
 
     repMsg = generic_msg(cmd='randint', args='{} {} {} {} {}'.\
                          format(sizestr, dtype.name, lowstr, highstr, seed))
-    return create_pdarray(repMsg)
+    return create_pdarray(cast(str,repMsg))
 
 @typechecked
 def uniform(size : int_scalars, low : numeric_scalars=float(0.0), 
@@ -821,3 +820,137 @@ def random_strings_lognormal(logmean : numeric_scalars, logstd : numeric_scalars
                  NUMBER_FORMAT_STRINGS['float64'].format(logstd),
                  seed))
     return Strings(*(cast(str,repMsg).split('+')))
+
+
+
+@typechecked
+def suffix_array(strings : Strings) -> SArrays:
+        """
+        Return the suffix arrays of given strings. The size/shape of each suffix
+	arrays is the same as the corresponding strings. 
+	A simple example of suffix array is as follow. Given a string "banana$",
+	all the suffixes are as follows. 
+	s[0]="banana$"
+	s[1]="anana$"
+	s[2]="nana$"
+	s[3]="ana$"
+	s[4]="na$"
+	s[5]="a$"
+	s[6]="$"
+	The suffix array of string "banana$"  is the array of indices of sorted suffixes.
+	s[6]="$"
+	s[5]="a$"
+	s[3]="ana$"
+	s[1]="anana$"
+	s[0]="banana$"
+	s[4]="na$"
+	s[2]="nana$"
+	so sa=[6,5,3,1,0,4,2]
+
+        Returns
+        -------
+        pdarray
+            The suffix arrays of the given strings
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+            Raised if there is a server-side error in executing group request or
+            creating the pdarray encapsulating the return message
+        """
+        cmd=  "segmentedSuffixAry"
+        args = "{} {} {}".format( strings.objtype,
+                                                        strings.offsets.name,
+                                                        strings.bytes.name) 
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return SArrays(*(cast(str,repMsg).split('+')))
+
+
+@typechecked
+def lcp_array(suffixarrays : SArrays, strings : Strings) -> SArrays:
+        """
+        Return the longest common prefix of given suffix arrays. The size/shape of each lcp
+	arrays is the same as the corresponding suffix array. 
+        -------
+        SArrays 
+            The LCP arrays of the given suffix arrays
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+            Raised if there is a server-side error in executing group request or
+            creating the pdarray encapsulating the return message
+        """
+        cmd = "segmentedLCP"
+        args = "{} {} {} {} {}".format( suffixarrays.objtype,
+                                                        suffixarrays.offsets.name,
+                                                        suffixarrays.bytes.name, 
+                                                        strings.offsets.name,
+                                                        strings.bytes.name) 
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return SArrays(*(cast(str,repMsg).split('+')))
+
+@typechecked
+def suffix_array_file(filename: str)  -> tuple:
+#def suffix_array_file(filename: str)  -> tuple[SArrays,Strings]:
+        """
+        This function is major used for testing correctness and performance
+        Return the suffix array of given file name's content as a string. 
+	A simple example of suffix array is as follow. Given string "banana$",
+	all the suffixes are as follows. 
+	s[0]="banana$"
+	s[1]="anana$"
+	s[2]="nana$"
+	s[3]="ana$"
+	s[4]="na$"
+	s[5]="a$"
+	s[6]="$"
+	The suffix array of string "banana$"  is the array of indices of sorted suffixes.
+	s[6]="$"
+	s[5]="a$"
+	s[3]="ana$"
+	s[1]="anana$"
+	s[0]="banana$"
+	s[4]="na$"
+	s[2]="nana$"
+	so sa=[6,5,3,1,0,4,2]
+
+        Returns
+        -------
+        pdarray
+            The suffix arrays of the given strings
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+            Raised if there is a server-side error in executing group request or
+            creating the pdarray encapsulating the return message
+        """
+        cmd = "segmentedSAFile"
+        args = "{}".format( filename )
+        repMsg = generic_msg(cmd=cmd,args=args)
+        tmpmsg=cast(str,repMsg).split('+')
+        sastr=tmpmsg[0:2]
+        strstr=tmpmsg[2:4]
+        suffixarray=SArrays(*(cast(str,sastr))) 
+        originalstr=Strings(*(cast(str,strstr))) 
+        return suffixarray,originalstr
+#        return SArrays(*(cast(str,repMsg).split('+')))
