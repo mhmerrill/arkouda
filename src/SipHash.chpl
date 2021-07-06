@@ -90,19 +90,16 @@ module SipHash {
     return c;
   }
   
-  proc sipHash64(msg: [] uint(8), D): uint(64) {
+  proc sipHash64(msg: [] ?t, D): uint(64) where t == int || t == uint(8) {
     var (res,_) = computeSipHashLocalized(msg, D, 8);
     return res;
   }
 
-  proc sipHash128(msg: [] uint(8), D): 2*uint(64) {
-    return computeSipHashLocalized(msg, D, 16);
-  }
-  proc sipHash128(msg: [] int, D): 2*uint(64) {
+  proc sipHash128(msg: [] ?t, D): 2*uint(64) where t == int || t == uint(8) {
     return computeSipHashLocalized(msg, D, 16);
   }
 
-  private proc computeSipHashLocalized(msg: [] uint(8), D, param outlen: int) {
+  private proc computeSipHashLocalized(msg: [] ?t, D, param outlen: int) where t == int || t == uint(8) {
     if contiguousIndices(msg) {
       ref start = msg[D.low];
       if D.high < D.low {
@@ -128,31 +125,6 @@ module SipHash {
     return computeSipHash(msg, D, outlen);
   }
   
-  private proc computeSipHashLocalized(msg: [] int, D, param outlen: int) {
-    if contiguousIndices(msg) {
-      ref start = msg[D.low];
-      if D.high < D.low {
-        return computeSipHash(c_ptrTo(start), 0..#0, outlen);
-      }
-      ref end = msg[D.high];
-      const startLocale = start.locale.id;
-      const endLocale = end.locale.id;
-      const hereLocale = here.id;
-      const l = D.size;
-      if startLocale == endLocale {
-        if startLocale == hereLocale {
-          return computeSipHash(c_ptrTo(start), 0..#l, outlen);
-        } else {
-          var a = c_malloc(msg.eltType, l);
-          GET(a, startLocale, getAddr(start), l);
-          var h = computeSipHash(a, 0..#l, outlen);
-          c_free(a);
-          return h;
-        }
-      }
-    }
-    return computeSipHash(msg, D, outlen);
-  }
   private proc computeSipHash(msg, D, param outlen: int) {
     if !((outlen == 8) || (outlen == 16)) {
       compilerError("outlen must be 8 or 16");

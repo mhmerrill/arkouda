@@ -225,13 +225,7 @@ def in1d_int(pda1: Union[pdarray, SArrays, 'Categorical'], pda2: Union[pdarray, 
     >>> ak.in1d(ak.array(['one','two']),ak.array(['two', 'three','four','five']))
     array([False, True])
     """
-    from arkouda.categorical import Categorical as Categorical_
-    if hasattr(pda1, 'in1d'):
-        return cast(Categorical_, pda1).in1d(pda2)
-    elif isinstance(pda1, pdarray) and isinstance(pda2, pdarray):
-        repMsg = generic_msg("in1d {} {} {}".format(pda1.name, pda2.name, invert))
-        return create_pdarray(cast(str, repMsg))
-    elif isinstance(pda1, SArrays) and isinstance(pda2, SArrays):
+    if isinstance(pda1, SArrays) and isinstance(pda2, SArrays):
         repMsg = generic_msg(
             "segmentedIn1dInt {} {} {} {} {} {} {}".format(
                 pda1.objtype,
@@ -245,7 +239,7 @@ def in1d_int(pda1: Union[pdarray, SArrays, 'Categorical'], pda2: Union[pdarray, 
         )
         return create_pdarray(cast(str, repMsg))
     else:
-        raise TypeError('Both pda1 and pda2 must be pdarray, SArrays, or Categorical')
+        return in1d(pda1, pda2)
 
 @typechecked
 def concatenate(arrays : Sequence[Union[pdarray,Strings,'Categorical']], #type: ignore
