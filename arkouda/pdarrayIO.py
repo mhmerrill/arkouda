@@ -213,8 +213,7 @@ def read_all(filenames : Union[str, List[str]],
             if "pdarray" == item["arkouda_type"]:
                 return create_pdarray(item["created"])
             elif "seg_string" == item["arkouda_type"]:
-                # TODO: This needs to use the proper Strings factory method, pre-rebase was the Strings.from_return_msg which no longer works here due to json
-                return Strings(*item["created"].split("+"))
+                return Strings.from_return_msg(item["created"])
             else:
                 raise TypeError(f"Unknown arkouda type:{item['arkouda_type']}")
         else:

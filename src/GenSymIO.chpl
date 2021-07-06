@@ -785,8 +785,8 @@ module GenSymIO {
                     item +="," + Q + "created" + QCQ + "created " + st.attrib(id) + Q + "}";
                 }
                 when ("seg_string") {
-                    var (segName, valName) = id.splitMsgToTuple("+", 2);
-                    item += "," + Q + "created" + QCQ + "created " + st.attrib(segName) + "+created " + st.attrib(valName) + Q + "}";
+                    var (segName, nBytes) = id.splitMsgToTuple("+", 2);
+                    item += "," + Q + "created" + QCQ + "created " + st.attrib(segName) + "+created bytes.size " + nBytes + Q + "}";
                 }
                 otherwise {
                     item += "}";

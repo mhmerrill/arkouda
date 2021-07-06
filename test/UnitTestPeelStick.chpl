@@ -257,15 +257,7 @@ proc makeSegArrayFromString(s:string, st) throws {
     bytes_list.append(nb_byt.toByte());
   }
 
-  var offsetName = st.nextName();
-  var offsetEntry = new shared SymEntry(offset_list.toArray());
-  st.addEntry(offsetName, offsetEntry);
-
-  var valName = st.nextName();
-  var valEntry = new shared SymEntry(bytes_list.toArray());
-  st.addEntry(valName, valEntry);
-  
-  return new shared SegString(offsetEntry, offsetName, valEntry, valName, st);
+  return getSegString(offset_list.toArray(), bytes_list.toArray(), st);
 }
 
 proc main() {
