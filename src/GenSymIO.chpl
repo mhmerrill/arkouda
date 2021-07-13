@@ -55,39 +55,29 @@ module GenSymIO {
         }
 
         overMemLimit(2*8*size);
-        var tmpf:file; defer { ensureClose(tmpf); }
 
         gsLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                           "dtype: %t size: %i".format(dtype,size));
 
-        // Write the data payload composing the pdarray to a memory buffer
-        try {
-            tmpf = openmem();
-            var tmpw = tmpf.writer(kind=iobig);
-            tmpw.write(data);
-            tmpw.close();
-        } catch {
-            var errorMsg = "Could not write to memory buffer";
-            gsLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);
-            return new MsgTuple(errorMsg, MsgType.ERROR);
+        proc bytesToSymEntry(size:int, type t, st: borrowed SymTab, ref data:bytes): string throws {
+            var entry = new shared SymEntry(size, t);
+            var localA = makeArrayFromPtr(data.c_str():c_void_ptr:c_ptr(t), size:uint);
+            entry.a = localA;
+            var name = st.nextName();
+            st.addEntry(name, entry);
+            return name;
         }
 
-        try {  // Read data in SymEntry based on type
-            if dtype == DType.Int64 {
-                rname = makeEntry(size, int, st, tmpf);
-            } else if dtype == DType.Float64 {
-                rname = makeEntry(size, real, st, tmpf);
-            } else if dtype == DType.Bool {
-                rname = makeEntry(size, bool, st, tmpf);
-            } else if dtype == DType.UInt8 {
-                rname = makeEntry(size, uint(8), st, tmpf);
-            } else {
-                msg = "Unhandled data type %s".format(dtypeBytes);
-                msgType = MsgType.ERROR;
-                gsLogger.error(getModuleName(),getRoutineName(),getLineNumber(),msg);
-            }
-        } catch {
-            msg = "Could not read from memory buffer into SymEntry";
+        if dtype == DType.Int64 {
+            rname = bytesToSymEntry(size, int, st, data);
+        } else if dtype == DType.Float64 {
+            rname = bytesToSymEntry(size, real, st, data);
+        } else if dtype == DType.Bool {
+            rname = bytesToSymEntry(size, bool, st, data);
+        } else if dtype == DType.UInt8 {
+            rname = bytesToSymEntry(size, uint(8), st, data);
+        } else {
+            msg = "Unhandled data type %s".format(dtypeBytes);
             msgType = MsgType.ERROR;
             gsLogger.error(getModuleName(),getRoutineName(),getLineNumber(),msg);
         }
@@ -100,22 +90,6 @@ module GenSymIO {
         return new MsgTuple(msg, msgType);
     }
 
-    /*
-     * Read the data payload from the memory buffer, encapsulate
-     * within a SymEntry, and write to the SymTab cache
-     * Here tmpf is a memory buffer which contains the data we want to read.
-     */
-    private proc makeEntry(size:int, type t, st: borrowed SymTab, tmpf:file): string throws {
-        var entry = new shared SymEntry(size, t);
-        var tmpr = tmpf.reader(kind=iobig, start=0);
-        var localA: [entry.aD.low..entry.aD.high] t;
-        tmpr.read(localA);
-        entry.a = localA;
-        tmpr.close(); 
-        var name = st.nextName();
-        st.addEntry(name, entry);
-        return name;
-    }
 
     /*
      * Ensure the file is closed, disregard errors
@@ -139,48 +113,29 @@ module GenSymIO {
         var arrayBytes: bytes;
         var entry = st.lookup(payload);
         overMemLimit(2*entry.size*entry.itemsize);
-        var tmpf: file; defer { ensureClose(tmpf); }
 
-        proc localizeArr(A: [?D] ?eltType) {
-            const localA:[D.low..D.high] eltType = A;
-            return localA;
-        }
-        try {
-            tmpf = openmem();
-            var tmpw = tmpf.writer(kind=iobig);
-            if entry.dtype == DType.Int64 {
-                tmpw.write(localizeArr(toSymEntry(entry, int).a));
-            } else if entry.dtype == DType.Float64 {
-                tmpw.write(localizeArr(toSymEntry(entry, real).a));
-            } else if entry.dtype == DType.Bool {
-                tmpw.write(localizeArr(toSymEntry(entry, bool).a));
-            } else if entry.dtype == DType.UInt8 {
-                tmpw.write(localizeArr(toSymEntry(entry, uint(8)).a));
-            } else {
-                var errorMsg = "Error: Unhandled dtype %s".format(entry.dtype);                
-                gsLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);            
-                return errorMsg.encode(); // return as bytes
-            }
-            tmpw.close();
-        } catch {
-            return b"Error: Unable to write SymEntry to memory buffer";
+        proc distArrToBytes(A: [?D] ?eltType) {
+            var ptr = c_malloc(eltType, D.size);
+            var localA = makeArrayFromPtr(ptr, D.size:uint);
+            localA = A;
+            const size = D.size*c_sizeof(eltType):int;
+            return createBytesWithOwnedBuffer(ptr:c_ptr(uint(8)), size, size);
         }
 
-        try {
-            var tmpr = tmpf.reader(kind=iobig, start=0);
-            tmpr.readbytes(arrayBytes);
-            tmpr.close();
-        } catch {
-            return b"Error: Unable to copy array from memory buffer to string";
+        if entry.dtype == DType.Int64 {
+            arrayBytes = distArrToBytes(toSymEntry(entry, int).a);
+        } else if entry.dtype == DType.Float64 {
+            arrayBytes = distArrToBytes(toSymEntry(entry, real).a);
+        } else if entry.dtype == DType.Bool {
+            arrayBytes = distArrToBytes(toSymEntry(entry, bool).a);
+        } else if entry.dtype == DType.UInt8 {
+            arrayBytes = distArrToBytes(toSymEntry(entry, uint(8)).a);
+        } else {
+            var errorMsg = "Error: Unhandled dtype %s".format(entry.dtype);
+            gsLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);
+            return errorMsg.encode(); // return as bytes
         }
-        //var repMsg = try! "Array: %i".format(arraystr.length) + arraystr;
-        /*
-         Engin: fwiw, if you want to achieve the above, you can:
 
-         return b"Array: %i %|t".format(arrayBytes.length, arrayBytes);
-
-         But I think the main problem is how to separate the length from the data
-         */
        return arrayBytes;
     }
 

@@ -148,9 +148,3 @@ class DtypesTest(ArkoudaTest):
         self.assertEqual('{:.17f}', dtypes.NUMBER_FORMAT_STRINGS['float64'])
         self.assertEqual('f', dtypes.NUMBER_FORMAT_STRINGS['np.float64'])
         self.assertEqual('{:n}', dtypes.NUMBER_FORMAT_STRINGS['uint8'])
-        
-    def test_structDtypeCodes(self):
-        self.assertEqual('q', dtypes.structDtypeCodes['int64'])
-        self.assertEqual('d', dtypes.structDtypeCodes['float64'])
-        self.assertEqual('?', dtypes.structDtypeCodes['bool'])
-        self.assertEqual('B', dtypes.structDtypeCodes['uint8'])
