@@ -12,6 +12,7 @@ from arkouda.numeric import *
 from arkouda.pdarrayIO import *
 from arkouda.groupbyclass import *
 from arkouda.strings import *
+from arkouda.suffix_array import *
 from arkouda.join import *
 from arkouda.categorical import *
 from arkouda.logger import *

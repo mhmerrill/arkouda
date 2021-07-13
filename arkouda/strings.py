@@ -85,14 +85,14 @@ class Strings:
             except Exception as e:
                 raise RuntimeError(e)
         if isinstance(bytes_attrib, pdarray):
-            self.bytes = bytes_attrib
+            self.bytes: pdarray = bytes_attrib
         else:
             try:
                 self.bytes = create_pdarray(bytes_attrib)
             except Exception as e:
                 raise RuntimeError(e)
         try:
-            self.size = self.offsets.size
+            self.size: int_scalars = self.offsets.size
             self.nbytes = self.bytes.size
             self.ndim = self.offsets.ndim
             self.shape = self.offsets.shape
