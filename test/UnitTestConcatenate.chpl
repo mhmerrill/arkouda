@@ -18,27 +18,16 @@ proc addStrings(n:int, minLen:int, maxLen:int, st: borrowed SymTab) {
 proc testConcat(n:int, minLen:int, maxLen:int) {
   var d: Diags;
   var st = new owned SymTab();
-  var (s1, v1) = newRandStringsUniformLength(n, minLen, maxLen);
-  var (s2, v2) = newRandStringsUniformLength(n, minLen, maxLen);
-  var s1Name = st.nextName();
-  var s1e = st.addEntry(s1Name, s1.size, int);
-  s1e.a = s1;
-  var v1Name = st.nextName();
-  var v1e = st.addEntry(v1Name, v1.size, uint(8));
-  v1e.a = v1;
-  var str1 = getSegString(s1Name, v1Name, st);
-  writeSegString("Str 1, %i elem, %i bytes".format(str1.size, str1.nBytes), str1);
-  var s2Name = st.nextName();
-  var s2e = st.addEntry(s2Name, s2.size, int);
-  s2e.a = s2;
-  var v2Name = st.nextName();
-  var v2e = st.addEntry(v2Name, v2.size, uint(8));
-  v2e.a = v2;
-  var str2 = getSegString(s2Name, v2Name, st);
 
+  var (s1, v1) = newRandStringsUniformLength(n, minLen, maxLen);
+  var str1:SegString = getSegString(s1, v1, st);
+  writeSegString("Str 1, %i elem, %i bytes".format(str1.size, str1.nBytes), str1);
+  
+  var (s2, v2) = newRandStringsUniformLength(n, minLen, maxLen);
+  var str2 = getSegString(s2, v2, st);
   writeSegString("\nStr 2, %i elem, %i bytes".format(str2.size, str2.nBytes), str2);
 
-  var reqMsg = "2 str append %s+%s %s+%s".format(s1Name, v1Name, s2Name, v2Name);
+  var reqMsg = "2 str append %s+%s %s+%s".format(str1.name, "legacy_placeholder", str2.name, "legacy_placeholder");
   writeReq(reqMsg);
   d.start();
   var repMsg = concatenateMsg(cmd="concatenate", payload=reqMsg, st).msg;
@@ -46,8 +35,7 @@ proc testConcat(n:int, minLen:int, maxLen:int) {
   writeRep(repMsg);
   var (resSegAttribStr, resValAttribStr) = repMsg.splitMsgToTuple('+', 2);
   var resSegAttrib = parseName(resSegAttribStr);
-  var resValName = parseName(resValAttribStr);
-  var resStr = getSegString(resSegAttrib, resValName, st);
+  var resStr = getSegString(resSegAttrib, st);
   writeSegString("\nResult, %i elem, %i bytes".format(resStr.size, resStr.nBytes), resStr);
 
   var correct = true;
@@ -59,7 +47,7 @@ proc testConcat(n:int, minLen:int, maxLen:int) {
 
   // Test interleave mode
   
-  reqMsg = "2 str interleave %s+%s %s+%s".format(s1Name, v1Name, s2Name, v2Name);
+  reqMsg = "2 str interleave %s+%s %s+%s".format(str1.name, "legacy_placeholder", str2.name, "legacy_placeholder");
   writeReq(reqMsg);
   d.start();
   repMsg = concatenateMsg(cmd="concatenate", payload=reqMsg, st).msg;
@@ -67,8 +55,7 @@ proc testConcat(n:int, minLen:int, maxLen:int) {
   writeRep(repMsg);
   (resSegAttribStr, resValAttribStr) = repMsg.splitMsgToTuple('+', 2);
   resSegAttrib = parseName(resSegAttribStr);
-  resValName = parseName(resValAttribStr);
-  resStr = getSegString(resSegAttrib, resValName, st);
+  resStr = getSegString(resSegAttrib, st);
   writeSegString("\nResult, %i elem, %i bytes".format(resStr.size, resStr.nBytes), resStr);
   correct = true;
   // All offsets should be monotonically increasing.

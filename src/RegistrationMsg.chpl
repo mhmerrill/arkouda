@@ -12,6 +12,7 @@ module RegistrationMsg
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
     use ServerErrorStrings;
+    use SegmentedArray;
 
     private config const logLevel = ServerConfig.logLevel;
     const regLogger = new Logger(logLevel);
@@ -86,9 +87,24 @@ module RegistrationMsg
             return new MsgTuple(errorMsg, MsgType.ERROR); 
         } else {
             repMsg = "created %s".format(attrib);
+            if (isStringAttrib(attrib)) {
+                var s = getSegString(name, st);
+                repMsg += "+created bytes.size %t".format(s.nBytes);
+            }
             regLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
             return new MsgTuple(repMsg, MsgType.NORMAL); 
         }
+    }
+
+    /*
+     * Determine if the attributes belong to a SegString
+     * :arg attrs: attributes from SymTab
+     * :type attrs: string
+     * :returns: bool
+     */
+    proc isStringAttrib(attrs:string):bool throws {
+        var parts = attrs.split();
+        return parts.size >=6 && "str" == parts[1];
     }
 
     /* 

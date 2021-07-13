@@ -25,15 +25,8 @@ module SegmentedArray {
   
   class OutOfBoundsError: Error {}
 
-  /* 
-   * This version of the getSegString method is the most common and is only used 
-   * when the names of the segments (offsets) and values SymEntries are known.
-   */
-  proc getSegString(offsetName: string, valName: string, 
-                                          st: borrowed SymTab): owned SegString throws {
-      var offsetEntry = st.lookup(offsetName);
-      var valEntry = st.lookup(valName);
-      return new owned SegString(offsetEntry, offsetName, valEntry, valName, st);
+  proc getSegString(name: string, st: borrowed SymTab): owned SegString throws {
+      return new owned SegString(name, st.lookup(name));
   }
 
   /*
@@ -41,17 +34,28 @@ module SegmentedArray {
    * inputs, generates the SymEntry objects for each and passes the
    * offset and value SymTab lookup names to the alternate init method
    */
-  proc getSegString(segments: [] int, values: [] uint(8), 
-                                          st: borrowed SymTab): SegString throws {
-      var offsetName = st.nextName();
-      var offsetEntry = new shared SymEntry(segments);
-      st.addEntry(offsetName, offsetEntry);
+  proc getSegString(segments: [] int, values: [] uint(8), st: borrowed SymTab): owned SegString throws {
+      var offsetsEntry = new shared SymEntry(segments);
+      var valuesEntry = new shared SymEntry(values);
+      var stringsEntry = new shared SegStringSymEntry(offsetsEntry, valuesEntry, string);
+      var name = st.nextName();
+      st.addEntry(name, stringsEntry);
+      return getSegString(name, st);
+  }
 
-      var valName = st.nextName();
-      var valEntry = new shared SymEntry(values);
-      st.addEntry(valName, valEntry);
+  proc assembleSegStringFromParts(offsets:GenSymEntry, values:GenSymEntry, st:borrowed SymTab): owned SegString throws {
+      var offs = toSymEntry(offsets, int);
+      var vals = toSymEntry(values, uint(8));
+      // This probably invokes a copy, but it's a temporary legacy bridge until we can pass
+      // array components as a single message.
+      return getSegString(offs.a, vals.a, st);
+  }
 
-      return new SegString(offsetEntry, offsetName, valEntry, valName, st);
+  proc assembleSegStringFromParts(offsets:SymEntry, values:SymEntry, st:borrowed SymTab): owned SegString throws {
+      var stringsEntry = new shared SegStringSymEntry(offsets, values, string);
+      var name = st.nextName();
+      st.addEntry(name, stringsEntry);
+      return getSegString(name, st);
   }
 
   /**
@@ -63,30 +67,22 @@ module SegmentedArray {
    */
   class SegString {
  
-    /**
-     * The name of the SymEntry corresponding to the pdarray containing
-     * the offsets, which are start indices for each string bytearray
-     */
-    var offsetName: string;
+    var name: string;
+
+    var composite: borrowed SegStringSymEntry;
 
     /**
      * The pdarray containing the offsets, which are the start indices of
      * the bytearrays, each of which corresponds to an individual string.
      */ 
-    var offsets: borrowed SymEntry(int);
-
-    /**
-     * The name of the SymEntry corresponding to the pdarray containing
-     * the string values where each value is byte array.
-     */
-    var valueName: string;
+    var offsets: shared SymEntry(int);
 
     /**
      * The pdarray containing the complete byte array composed of bytes
      * corresponding to each string, joined by nulls. Note: the null byte
      * is uint(8) value of zero.
      */ 
-    var values: borrowed SymEntry(uint(8));
+    var values: shared SymEntry(uint(8));
     
     /**
      * The number of strings in the segmented array
@@ -104,18 +100,13 @@ module SegmentedArray {
      * This method should not be called directly. Instead, call one of the
      * getSegString factory methods.
      */
-    proc init(offsetEntry: borrowed GenSymEntry, segsName: string, 
-                   valEntry: borrowed GenSymEntry, valName: string, st: borrowed SymTab) {
-      offsetName = segsName;
-      //Must be unmanaged because borrowed throws a lifetime error
-      offsets = toSymEntry(offsetEntry, int): unmanaged SymEntry(int);
-
-      valueName = valName;
-      //Must be unmanaged because borrowed throws a lifetime error
-      values = toSymEntry(valEntry, uint(8)): unmanaged SymEntry(uint(8));
-
-      size = offsets.size;
-      nBytes = values.size;
+    proc init(entryName:string, gse:borrowed GenSymEntry) {
+        name = entryName;
+        composite = toSegStringSymEntry(gse);
+        offsets = composite.offsetsEntry: shared SymEntry(int);
+        values = composite.bytesEntry: shared SymEntry(uint(8));
+        size = offsets.size;
+        nBytes = values.size;
     }
 
     proc show(n: int = 3) throws {

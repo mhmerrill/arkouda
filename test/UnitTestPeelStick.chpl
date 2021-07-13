@@ -17,17 +17,7 @@ proc make_strings(substr, n, minLen, maxLen, characters, st) {
   const nb = substr.numBytes;
   const sbytes: [0..#nb] uint(8) = for b in substr.chpl_bytes() do b;
   var (segs, vals) = newRandStringsUniformLength(n, minLen, maxLen, characters);
-    
-  var offsetName = st.nextName();
-  var offsetEntry = new shared SymEntry(segs);
-  st.addEntry(offsetName, offsetEntry);
-
-  var valName = st.nextName();
-  var valEntry = new shared SymEntry(vals);
-  st.addEntry(valName, valEntry);
-
-  var strings = new owned SegString(offsetEntry, offsetName, valEntry, valName, st);
-  
+  var strings = getSegString(segs, vals, st);
   var lengths = strings.getLengths() - 1;
   var r: [segs.domain] int;
   fillInt(r, 0, 100);
@@ -52,15 +42,8 @@ proc make_strings(substr, n, minLen, maxLen, characters, st) {
       }
     }
   }
-  offsetName = st.nextName();
-  offsetEntry = new shared SymEntry(segs);
-  st.addEntry(offsetName, offsetEntry);
-
-  valName = st.nextName();
-  valEntry = new shared SymEntry(vals);
-  st.addEntry(valName, valEntry);
-
-  var strings2 = new shared SegString(offsetEntry, offsetName, valEntry, valName, st);
+  
+  var strings2 = getSegString(segs, vals, st): shared SegString;
   return (splits, strings2);
 }
 
@@ -150,23 +133,21 @@ proc testMessageLayer(substr, n, minLen, maxLen) throws {
   d.start();
   var (answer, strings) = make_strings(substr, n, minLen, maxLen, charSet.Uppercase, st);
   d.stop("make_strings");
-  var reqMsg = "peel str %s %s str 1 True True True %jt".format(strings.offsetName, strings.valueName, [substr]);
+  var reqMsg = "peel str %s legacy_placeholder str 1 True True True %jt".format(strings.name, [substr]);
   writeReq(reqMsg);
   var repMsg = segmentedPeelMsg(cmd="segmentedPeel", payload=reqMsg, st).msg;
   writeRep(repMsg);
   var (loAttribs,lvAttribs,roAttribs,rvAttribs) = repMsg.splitMsgToTuple('+', 4);
   var loname = parseName(loAttribs);
-  var lvname = parseName(lvAttribs);
   var roname = parseName(roAttribs);
-  var rvname = parseName(rvAttribs);
-  reqMsg = "stick str %s %s str %s %s False %jt".format(loname, lvname, roname, rvname, [""]);
+  reqMsg = "stick str %s %s str %s %s False %jt".format(loname, "legacy_placeholder", roname, "legacy_placeholder", [""]);
   writeReq(reqMsg);
   repMsg = segBinopvvMsg(cmd="segBinopvv", payload=reqMsg, st).msg;
   writeRep(repMsg);
-  var (rtoAttribs,rtvAttribs) = repMsg.splitMsgToTuple('+', 2);
+  //TODO remove legacy_placeholder
+  var (rtoAttribs,legacy_placeholder) = repMsg.splitMsgToTuple('+', 2);
   var rtoname = parseName(rtoAttribs);
-  var rtvname = parseName(rtvAttribs);
-  var roundTrip = getSegString(rtoname, rtvname, st);
+  var roundTrip = getSegString(rtoname, st);
   var success = && reduce (strings == roundTrip);
   writeln("Round trip successful? >>> %t <<<".format(success));
 }
@@ -276,15 +257,7 @@ proc makeSegArrayFromString(s:string, st) throws {
     bytes_list.append(nb_byt.toByte());
   }
 
-  var offsetName = st.nextName();
-  var offsetEntry = new shared SymEntry(offset_list.toArray());
-  st.addEntry(offsetName, offsetEntry);
-
-  var valName = st.nextName();
-  var valEntry = new shared SymEntry(bytes_list.toArray());
-  st.addEntry(valName, valEntry);
-  
-  return new shared SegString(offsetEntry, offsetName, valEntry, valName, st);
+  return getSegString(offset_list.toArray(), bytes_list.toArray(), st);
 }
 
 proc main() {

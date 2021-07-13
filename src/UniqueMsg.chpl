@@ -121,10 +121,9 @@ module UniqueMsg
             return new MsgTuple(repMsg, MsgType.NORMAL);
           }
           when "str" {
-              var offsetName = st.nextName();
-              var valueName = st.nextName();
-              var (names1,names2) = name.splitMsgToTuple('+', 2);
-              var str = getSegString(names1, names2, st);
+              // TODO remove legacy_placeholder
+              var (names1, legacy_placeholder) = name.splitMsgToTuple('+', 2);
+              var str = getSegString(names1, st);
 
               /*
                * The upper limit here is the similar to argsort/radixSortLSD_keys, but with 
@@ -133,10 +132,9 @@ module UniqueMsg
               overMemLimit((8 * str.size * 8)
                          + (2 * here.maxTaskPar * numLocales * 2**16 * 8));
               var (uo, uv, c, inv) = uniqueGroup(str);
-              st.addEntry(offsetName, new shared SymEntry(uo));
-              st.addEntry(valueName, new shared SymEntry(uv));
-
-              repMsg = "created " + st.attrib(offsetName) + " +created " + st.attrib(valueName);
+              var myStr = getSegString(uo, uv, st);
+              // TODO remove second, legacy call to st.attrib(myStr.name)
+              repMsg = "created %s+created bytes.size %t".format(st.attrib(myStr.name), myStr.nBytes);
 
               if returnCounts {
                   var countName = st.nextName();

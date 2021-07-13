@@ -41,8 +41,8 @@ def time_ak_gather(isize, vsize, trials, dtype, random, seed):
 
     print("Average time = {:.4f} sec".format(tavg))
     if dtype == 'str':
-        offsets_transferred = 3 * c.offsets.size * c.offsets.itemsize
-        bytes_transferred = (c.offsets.size * c.offsets.itemsize) + (2 * c.bytes.size)
+        offsets_transferred = 3 * c.size * 8
+        bytes_transferred = (c.size * 8) + (2 * c.nbytes)
         bytes_per_sec = (offsets_transferred + bytes_transferred) / tavg
     else:
         bytes_per_sec = (c.size * c.itemsize * 3) / tavg

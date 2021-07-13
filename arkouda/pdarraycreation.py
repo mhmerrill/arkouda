@@ -193,7 +193,7 @@ def array(a : Union[pdarray,np.ndarray, Iterable]) -> Union[pdarray, Strings]:
             for i, b in enumerate(s):
                 values[o+i] = b
         # Recurse to create pdarrays for offsets and values, then return Strings object
-        return Strings(cast(pdarray, array(offsets)), cast(pdarray, array(values)))
+        return Strings.from_parts(cast(pdarray, array(offsets)), cast(pdarray, array(values)))
     # If not strings, then check that dtype is supported in arkouda
     if a.dtype.name not in DTypes:
         raise RuntimeError("Unhandled dtype {}".format(a.dtype))
@@ -756,7 +756,7 @@ def random_strings_uniform(minlen : int_scalars, maxlen : int_scalars,
                  NUMBER_FORMAT_STRINGS['int64'].format(minlen),
                  NUMBER_FORMAT_STRINGS['int64'].format(maxlen),
                  seed))
-    return Strings(*(cast(str,repMsg).split('+')))
+    return Strings.from_return_msg(cast(str, repMsg))
 
 @typechecked
 def random_strings_lognormal(logmean : numeric_scalars, logstd : numeric_scalars, 
@@ -822,4 +822,6 @@ def random_strings_lognormal(logmean : numeric_scalars, logstd : numeric_scalars
                  NUMBER_FORMAT_STRINGS['float64'].format(logmean),
                  NUMBER_FORMAT_STRINGS['float64'].format(logstd),
                  seed))
-    return Strings(*(cast(str,repMsg).split('+')))
+    left, right = cast(str, repMsg).split('+')
+    bytesSize:int_scalars = int(right.split()[-1])
+    return Strings(create_pdarray(left), bytesSize)

@@ -3,6 +3,7 @@ module MultiTypeSymEntry
 {
     use ServerConfig;
     use Logging;
+    use Reflection;
 
     public use NumPyDType;
 
@@ -10,6 +11,9 @@ module MultiTypeSymEntry
 
     use AryUtil;
     
+    private config const logLevel = ServerConfig.logLevel;
+    const genLogger = new Logger(logLevel);
+
     /* Casts a GenSymEntry to the specified type and returns it.
        
        :arg gse: generic sym entry
@@ -20,6 +24,10 @@ module MultiTypeSymEntry
        */
     inline proc toSymEntry(gse: borrowed GenSymEntry, type etype) {
         return gse.toSymEntry(etype);
+    }
+
+    inline proc toSegStringSymEntry(gse: borrowed GenSymEntry) {
+        return try! gse: borrowed SegStringSymEntry(string);
     }
 
     /* This is a dummy class to avoid having to talk about specific
@@ -72,6 +80,7 @@ module MultiTypeSymEntry
             :returns: s (string) containing the array data
         */
         proc __str__(thresh:int=1, prefix:string="", suffix:string="", baseFormat:string=""): string throws {
+            genLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "__str__ invoked");
             var s = "DType: %s, itemsize: %t, size: %t".format(this.dtype, this.itemsize, this.size);
             return prefix + s + suffix;
         }
@@ -196,6 +205,36 @@ module MultiTypeSymEntry
             }
 
             return prefix + s + suffix;
+        }
+    }
+
+    /**
+     * Factory method for creating a typed SymEntry and checking mem limits
+     * :arg len: the number of elements to allocate
+     * :type len: int
+     * 
+     * :arg t: the element type
+     * :type t: type
+    */
+    proc createTypedSymEntry(len: int, type t) throws {
+        if t == bool {overMemLimit(len);} else {overMemLimit(len*numBytes(t));}
+        return new shared SymEntry(len, t);
+    }
+
+    class SegStringSymEntry : GenSymEntry {
+        type etype = string;
+
+        var offsetsEntry: shared SymEntry(int);
+        var bytesEntry: shared SymEntry(uint(8));
+
+        proc init(offsetsSymEntry: shared SymEntry, bytesSymEntry: shared SymEntry, type etype) {
+            super.init(string);
+            this.offsetsEntry = offsetsSymEntry;
+            this.bytesEntry = bytesSymEntry;
+            this.size = this.offsetsEntry.size;
+            this.ndim = this.offsetsEntry.ndim;
+            this.shape = this.offsetsEntry.shape;
+            this.itemsize = this.bytesEntry.itemsize;
         }
     }
 

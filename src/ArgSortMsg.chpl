@@ -291,8 +291,9 @@ module ArgSortMsg
       for (i, j) in zip(names.domain.low..names.domain.high by -1,
                         types.domain.low..types.domain.high by -1) {
         if (types[j] == "str") {
-          var (myNames1,myNames2) = names[i].splitMsgToTuple('+', 2);
-          var strings = getSegString(myNames1, myNames2, st);
+          // TODO remove legacy_placeholder
+          var (myNames1, legacy_placeholder) = names[i].splitMsgToTuple('+', 2);
+          var strings = getSegString(myNames1, st);
           iv.a = incrementalArgSort(strings, iv.a);
         } else {
           var g: borrowed GenSymEntry = st.lookup(names[i]);
@@ -354,8 +355,9 @@ module ArgSortMsg
             }
           }
           when "str" {
-            var (names1, names2) = name.splitMsgToTuple('+', 2);
-            var strings = getSegString(names1, names2, st);
+            // TODO remove legacy_placeholder
+            var (names1, legacy_placeholder) = name.splitMsgToTuple('+', 2);
+            var strings = getSegString(names1, st);
             // check and throw if over memory limit
             overMemLimit((8 * strings.size * 8)
                          + (2 * here.maxTaskPar * numLocales * 2**16 * 8));

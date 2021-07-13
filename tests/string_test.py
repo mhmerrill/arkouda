@@ -471,15 +471,15 @@ class StringTest(ArkoudaTest):
         # Convert Pandas series of strings into a byte array where each string is terminated by a null byte.
         # This mimics what should be stored server-side in the strings.bytes pdarray
         expected_series_dec = convert_to_ord(series.to_list())
-        actual_dec = pda.bytes.to_ndarray().tolist()
+        actual_dec = pda._comp_to_ndarray("values").tolist() #pda.bytes.to_ndarray().tolist()
         self.assertListEqual(expected_series_dec, actual_dec)
 
         # Now perform the peel and verify
         a, b = pda.peel(":")
         expected_a = convert_to_ord(["k1", "k2", "k3", ""])
         expected_b = convert_to_ord(["v1", "v2", "v3", "no_colon"])
-        self.assertListEqual(expected_a, a.bytes.to_ndarray().tolist())
-        self.assertListEqual(expected_b, b.bytes.to_ndarray().tolist())
+        self.assertListEqual(expected_a, a._comp_to_ndarray("values").tolist())
+        self.assertListEqual(expected_b, b._comp_to_ndarray("values").tolist())
 
     def test_peel_delimiter_length_issue(self):
         # See Issue 838

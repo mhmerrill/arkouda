@@ -23,14 +23,13 @@ module FlattenMsg {
       when "str" {
         const rSegName = st.nextName();
         const rValName = st.nextName();
-        const optName: string = if returnSegs then st.nextName() else "";
-        var (segName, valName) = name.splitMsgToTuple('+', 2);
-        const strings = getSegString(segName, valName, st);
+        var (stringsName, legacy_placeholder) = name.splitMsgToTuple('+', 2);
+        const strings = getSegString(stringsName, st);
         var (off, val, segs) = strings.flatten(delim, returnSegs);
-        st.addEntry(rSegName, new shared SymEntry(off));
-        st.addEntry(rValName, new shared SymEntry(val));
-        repMsg = "created %s+created %s".format(st.attrib(rSegName), st.attrib(rValName));
+        var stringsObj = getSegString(off, val, st);
+        repMsg = "created %s+created bytes.size %t".format(st.attrib(stringsObj.name), stringsObj.nBytes);
         if returnSegs {
+          const optName: string = st.nextName();
           st.addEntry(optName, new shared SymEntry(segs));
           repMsg += "+created %s".format(st.attrib(optName));
         }

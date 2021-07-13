@@ -17,7 +17,7 @@ def generate_arrays(N, numArrays, dtype, seed):
         else:
             a = ak.random_strings_uniform(1, 16, N//numArrays, seed=seed)
             arrays.append(a)
-            totalbytes += (a.bytes.size * a.bytes.itemsize)
+            totalbytes += (a.nbytes * a.entry.itemsize)
         if seed is not None:
             seed += 1
     if numArrays == 1:
